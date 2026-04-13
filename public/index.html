@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1f0f">
+<title>Daily Journal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --green-deep:  #0d1f0f;
+    --green-dark:  #142a16;
+    --green-mid:   #1e4022;
+    --green-soft:  #2d5e31;
+    --green-muted: #4a8a4e;
+    --green-light: #7dba82;
+    --green-pale:  #c8eaca;
+    --cream:       #f5f0e8;
+    --gold:        #c9a84c;
+    --text-primary:#f5f0e8;
+    --text-muted:  #8ab58e;
+    --text-hint:   #4a7a4e;
+    --radius:      16px;
+    --radius-sm:   10px;
+  }
+
+  html, body { height: 100%; background: var(--green-deep); color: var(--text-primary);
+    font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.6; overflow: hidden; }
+
+  #app { display: flex; flex-direction: column; height: 100dvh; max-width: 480px; margin: 0 auto; }
+
+  /* HEADER */
+  #header { padding: 48px 24px 14px; flex-shrink: 0; }
+  #header-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  #app-name { font-family: 'DM Serif Display', serif; font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--green-muted); padding-top: 3px; }
+  #date-display { font-size: 12px; color: var(--text-hint); letter-spacing: 0.04em; text-align: right; }
+  #greeting { font-family: 'DM Serif Display', serif; font-size: 24px; color: var(--cream);
+    line-height: 1.2; margin-top: 6px; }
+  #status-bar { display: flex; align-items: center; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+  #streak-dots { display: flex; gap: 4px; }
+  .streak-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-hint); transition: background 0.3s; }
+  .streak-dot.active { background: var(--green-light); }
+  #streak-label { font-size: 12px; color: var(--text-muted); }
+  #coverage-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .coverage-pill { font-size: 10px; padding: 2px 8px; border-radius: 20px;
+    background: var(--green-mid); color: var(--text-hint); letter-spacing: 0.04em; transition: all 0.3s; }
+  .coverage-pill.logged { background: #1a3d1e; color: var(--green-light); }
+
+  /* CHAT */
+  #chat-area { flex: 1; overflow-y: auto; padding: 8px 18px 12px; scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; }
+  #chat-area::-webkit-scrollbar { display: none; }
+
+  .visit-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 10px;
+    font-size: 11px; color: var(--text-hint); letter-spacing: 0.06em; text-transform: uppercase; }
+  .visit-divider::before, .visit-divider::after { content: ''; flex: 1; height: 1px; background: var(--green-mid); }
+
+  .bubble-wrap { display: flex; margin-bottom: 10px; animation: fadeUp 0.28s ease both; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .bubble-wrap.user { justify-content: flex-end; }
+  .bubble-wrap.assistant { justify-content: flex-start; }
+  .bubble { max-width: 84%; padding: 11px 15px; border-radius: var(--radius); font-size: 15px; line-height: 1.55; }
+  .bubble-wrap.assistant .bubble { background: var(--green-dark); color: var(--cream);
+    border-bottom-left-radius: 4px; border: 1px solid var(--green-mid); }
+  .bubble-wrap.user .bubble { background: var(--green-soft); color: var(--cream); border-bottom-right-radius: 4px; }
+  .bubble.insight { background: linear-gradient(135deg, #1a3a1c, #142a16); border: 1px solid var(--gold);
+    color: var(--cream); max-width: 100%; }
+  .insight-label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 5px; font-weight: 500; }
+
+  .typing-dots { display: flex; gap: 5px; padding: 13px 15px; background: var(--green-dark);
+    border-radius: var(--radius); border-bottom-left-radius: 4px; border: 1px solid var(--green-mid); width: fit-content; }
+  .typing-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--green-muted); animation: bounce 1.2s ease infinite; }
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,60%,100% { transform:translateY(0); opacity:0.5; } 30% { transform:translateY(-6px); opacity:1; } }
+
+  /* SUMMARY CARD */
+  #summary-card { display: none; margin: 6px 18px 0; padding: 14px 16px;
+    background: var(--green-dark); border: 1px solid var(--green-soft); border-radius: var(--radius); }
+  #summary-card h3 { font-family: 'DM Serif Display', serif; font-size: 15px; color: var(--green-light); margin-bottom: 10px; }
+  #summary-lines { font-size: 13px; color: var(--text-muted); line-height: 1.9; }
+  #summary-lines strong { color: var(--cream); font-weight: 500; }
+  #summary-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .action-btn { flex: 1; padding: 10px; border-radius: var(--radius-sm); border: none;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+  .action-btn:active { opacity: 0.7; }
+  .action-btn.primary { background: var(--green-soft); color: var(--cream); }
+  .action-btn.secondary { background: transparent; color: var(--text-muted); border: 1px solid var(--green-mid); }
+
+  /* INPUT */
+  #input-area { flex-shrink: 0; padding: 10px 16px 30px; }
+  #input-row { display: flex; align-items: flex-end; gap: 8px; background: var(--green-dark);
+    border: 1px solid var(--green-mid); border-radius: 24px; padding: 7px 7px 7px 14px; transition: border-color 0.2s; }
+  #input-row:focus-within { border-color: var(--green-soft); }
+  #msg-input { flex: 1; background: none; border: none; outline: none; color: var(--cream);
+    font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.4; resize: none;
+    max-height: 110px; min-height: 24px; padding: 2px 0; }
+  #msg-input::placeholder { color: var(--text-hint); }
+  #send-btn { width: 36px; height: 36px; border-radius: 50%; background: var(--green-soft); border: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  #send-btn:active { transform: scale(0.9); }
+  #send-btn:disabled { background: var(--green-mid); opacity: 0.45; cursor: default; }
+  #send-btn svg { width: 17px; height: 17px; fill: var(--cream); }
+  #mic-btn { width: 36px; height: 36px; border-radius: 50%; background: transparent; border: 1px solid var(--green-mid);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+  #mic-btn.recording { background: #8b1a1a; border-color: #c94444; animation: pulse-red 1s ease infinite; }
+  @keyframes pulse-red { 0%,100% { box-shadow: 0 0 0 0 rgba(201,68,68,0.4); } 50% { box-shadow: 0 0 0 8px rgba(201,68,68,0); } }
+  #mic-btn svg { width: 17px; height: 17px; stroke: var(--text-muted); fill: none; }
+  #mic-btn.recording svg { stroke: #ff8888; }
+
+  /* NAV */
+  #nav { display: flex; justify-content: space-around; padding: 8px 0 4px;
+    border-top: 1px solid var(--green-mid); flex-shrink: 0; }
+  .nav-tab { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 5px 20px;
+    background: none; border: none; cursor: pointer; color: var(--text-hint); font-family: 'DM Sans', sans-serif;
+    font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-tab.active { color: var(--green-light); }
+  .nav-tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.5; }
+
+  /* HISTORY */
+  #history-screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #history-view { flex: 1; overflow-y: auto; padding: 12px 18px 20px; }
+  #history-view::-webkit-scrollbar { display: none; }
+  .history-item { background: var(--green-dark); border: 1px solid var(--green-mid); border-radius: var(--radius);
+    padding: 14px 16px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s; }
+  .history-item:active { border-color: var(--green-soft); }
+  .history-date { font-size: 11px; color: var(--text-hint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 5px; }
+  .history-preview { font-size: 14px; color: var(--text-muted); line-height: 1.5; }
+  .history-badges { display: flex; gap: 5px; margin-top: 8px; flex-wrap: wrap; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--green-mid); color: var(--green-pale); }
+  .badge.good { background: #1a3d1e; color: var(--green-light); }
+  .badge.missed { background: #2a1a1a; color: #c47a7a; }
+  .badge.partial { background: #2a2510; color: #c9a84c; }
+  #empty-history { text-align: center; padding: 60px 20px; color: var(--text-hint); }
+  #empty-history svg { width: 44px; height: 44px; stroke: var(--text-hint); fill: none; margin-bottom: 14px; opacity: 0.4; }
+
+  /* SERVER STATUS */
+  #server-status { font-size: 11px; text-align: center; padding: 4px 0;
+    color: var(--text-hint); flex-shrink: 0; }
+  #server-status.error { color: #c47a7a; }
+  #server-status.ok { color: var(--text-hint); }
+
+  #journal-screen { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="journal-screen">
+    <div id="header">
+      <div id="header-top">
+        <span id="app-name">Daily Journal</span>
+        <span id="date-display"></span>
+      </div>
+      <div id="greeting"></div>
+      <div id="status-bar">
+        <div id="streak-dots"></div>
+        <span id="streak-label"></span>
+      </div>
+      <div id="coverage-row"></div>
+    </div>
+
+    <div id="server-status"></div>
+    <div id="chat-area"></div>
+
+    <div id="summary-card">
+      <h3>Today's entry — ready to finalize</h3>
+      <div id="summary-lines"></div>
+      <div id="summary-actions">
+        <button class="action-btn primary" onclick="finalizeEntry()">Finalize & Save</button>
+        <button class="action-btn secondary" onclick="keepAdding()">Keep adding</button>
+      </div>
+    </div>
+
+    <div id="input-area">
+      <div id="input-row">
+        <button id="mic-btn" onclick="toggleMic()" title="Voice input">
+          <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="12" rx="3"/>
+            <path d="M5 10a7 7 0 0014 0M12 19v3M8 22h8"/>
+          </svg>
+        </button>
+        <textarea id="msg-input" placeholder="What's happening right now?" rows="1"
+          oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
+        <button id="send-btn" onclick="sendMessage()" disabled>
+          <svg viewBox="0 0 24 24"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="history-screen">
+    <div id="header">
+      <div id="header-top">
+        <span id="app-name">Daily Journal</span>
+        <span id="date-display"></span>
+      </div>
+      <div id="greeting" style="font-size:20px">Your entries</div>
+    </div>
+    <div id="history-view"></div>
+  </div>
+
+  <nav id="nav">
+    <button class="nav-tab active" id="tab-journal" onclick="switchTab('journal')">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+      </svg>
+      Today
+    </button>
+    <button class="nav-tab" id="tab-history" onclick="switchTab('history')">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 8v4l3 3M3.05 11a9 9 0 1 0 .5-3M3 4v4h4"/>
+      </svg>
+      History
+    </button>
+  </nav>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  CONFIG
+//  No API key here — it lives securely on the server.
+//  This is the only URL to update when deploying.
+// ═══════════════════════════════════════════════════
+const SERVER = window.location.origin; // auto-detects server URL
+const PARTICIPANT = 'humberto';
+const FINALIZE_HOUR = 19;
+
+const PROTOCOL = {
+  name: 'Humberto',
+  concentration: '30:1 extract powder',
+  dose: '~3 matchhead volumes',
+  frequency: 'twice daily',
+  exercise_window_min: 10,
+  interval_work_min: 4,
+  interval_rest_min: 2,
+  interval_rounds: 3,
+  hr_target_pct: 80,
+};
+
+const FIELD_GROUPS = {
+  'Dose 1':    ['DOSE_1_TAKEN'],
+  'Exercise':  ['DOSE_1_EXERCISE','DOSE_2_EXERCISE'],
+  'Dose 2':    ['DOSE_2_TAKEN'],
+  'Diet':      ['WATER_OZ'],
+  'Sleep':     ['SLEEP_HRS'],
+  'Wellbeing': ['MOOD','ENERGY','PHYSICAL'],
+  'Tests':     ['PSA'],
+};
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+function todayKey() { return new Date().toISOString().split('T')[0]; }
+
+let state = {
+  date: todayKey(), visits: [], messages: [], fields: {}, finalized: false
+};
+let entries    = [];
+let isLoading  = false;
+let isRecording= false;
+let recognition= null;
+
+// ═══════════════════════════════════════════════════
+//  SERVER API
+// ═══════════════════════════════════════════════════
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(SERVER + path, opts);
+  if (!res.ok) throw new Error(`${method} ${path} → ${res.status}`);
+  return res.json();
+}
+
+async function loadServerState() {
+  try {
+    const r = await api('GET', `/api/state/${PARTICIPANT}`);
+    if (r.exists && r.state) state = r.state;
+  } catch (e) { console.warn('Could not load state from server:', e.message); }
+}
+
+async function saveServerState() {
+  try { await api('PUT', `/api/state/${PARTICIPANT}`, { state }); }
+  catch (e) { console.warn('Could not save state to server:', e.message); }
+}
+
+async function loadEntries() {
+  try {
+    entries = await api('GET', `/api/entries/${PARTICIPANT}`);
+  } catch (e) {
+    console.warn('Could not load entries:', e.message);
+    entries = [];
+  }
+}
+
+async function checkServerHealth() {
+  try {
+    const h = await api('GET', '/api/health');
+    const el = document.getElementById('server-status');
+    if (!h.api_configured) {
+      el.textContent = '⚠ API key not yet configured on server';
+      el.className = 'error';
+    } else {
+      el.textContent = '';
+    }
+  } catch (e) {
+    const el = document.getElementById('server-status');
+    el.textContent = '⚠ Server offline — check your connection';
+    el.className = 'error';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+//  SYSTEM PROMPT (built fresh each visit)
+// ═══════════════════════════════════════════════════
+function buildSystemPrompt() {
+  const now = new Date();
+  const hour = now.getHours();
+  const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  const isEvening = hour >= FINALIZE_HOUR;
+  const visitCount = state.visits.length;
+
+  let timeCtx = '';
+  if (hour < 10)               timeCtx = 'Early morning — participant may be logging after first dose and exercise.';
+  else if (hour < 14)          timeCtx = 'Midday — may be logging after lunch, second dose, or an activity.';
+  else if (hour < FINALIZE_HOUR) timeCtx = 'Afternoon — may be logging after second dose or afternoon activity.';
+  else                         timeCtx = `Evening (${timeStr}) — natural time to wrap up. Gently guide toward finalizing after logging what\'s new, but follow his lead.`;
+
+  const filledFields = Object.keys(state.fields).filter(k =>
+    state.fields[k] && state.fields[k] !== 'N/A' && state.fields[k] !== 'none');
+
+  const fieldsCtx = filledFields.length
+    ? `Already logged today: ${filledFields.join(', ')}. Do NOT ask about these again unless he brings them up.`
+    : 'Nothing logged yet today.';
+
+  const visitCtx = visitCount === 0
+    ? 'First check-in of the day.'
+    : `Visit ${visitCount + 1} today. He has checked in ${visitCount} time(s) already.`;
+
+  return `You are the daily journal assistant for ${PROTOCOL.name}, participating in a personal health study tracking white button mushroom extract (Agaricus bisporus, ${PROTOCOL.concentration}) effects on PSA levels and prostate cancer markers.
+
+PROTOCOL:
+- Extract: ${PROTOCOL.concentration}, twice daily, ~${PROTOCOL.dose} per dose
+- Exercise (optional, strongly correlated): start within ${PROTOCOL.exercise_window_min} min of dose, ${PROTOCOL.interval_work_min} min on / ${PROTOCOL.interval_rest_min} min off × ${PROTOCOL.interval_rounds} rounds, reach ${PROTOCOL.hr_target_pct}% age-predicted max HR by end of each work block, manual pulse check
+
+CONTEXT:
+- Time: ${timeStr}
+- ${timeCtx}
+- ${visitCtx}
+- ${fieldsCtx}
+
+APPROACH — CUMULATIVE DAILY LOG:
+${PROTOCOL.name} checks in multiple times throughout the day. Each visit he shares what's relevant RIGHT NOW. You:
+1. Greet him appropriately for this visit number
+2. Invite him to share what just happened or what's on his mind
+3. Log what he shares — only ask follow-ups about what he just mentioned
+4. ${isEvening ? 'Since it\'s evening: after logging what\'s new, note missing fields and offer to wrap up.' : 'Do NOT push for a complete entry. Just capture what\'s relevant now. More visits will come.'}
+5. Keep each exchange SHORT — he is checking in, not sitting down for a long session
+
+FIELD UPDATES — after each response, output ONLY newly learned fields:
+[FIELDS]
+FIELD_NAME: value
+[/FIELDS]
+
+FIELDS TO COLLECT ACROSS THE DAY:
+DOSE_1_TAKEN, DOSE_1_TIME, DOSE_1_AMOUNT,
+DOSE_1_EXERCISE, DOSE_1_GAP_MIN, DOSE_1_GAP_OK, DOSE_1_ROUNDS, DOSE_1_HR_TARGET_FELT, DOSE_1_ABSORPTION (1-5),
+DOSE_2_TAKEN, DOSE_2_TIME, DOSE_2_AMOUNT,
+DOSE_2_EXERCISE, DOSE_2_GAP_MIN, DOSE_2_GAP_OK, DOSE_2_ROUNDS, DOSE_2_HR_TARGET_FELT, DOSE_2_ABSORPTION,
+PSA, TESTOSTERONE, OTHER_MARKERS,
+MEALS, WATER_OZ,
+SLEEP_HRS, SLEEP_QUALITY (1-5),
+MOOD (1-10), ENERGY (1-10), PHYSICAL (1-10),
+SYMPTOMS, APPOINTMENT, NOTES
+
+${isEvening ? `EVENING SUMMARY — when ready to finalize, output:
+[SUMMARY]
+DATE: {date}
+DOSE_1_TAKEN: {yes/no}
+DOSE_1_TIME: {or N/A}
+DOSE_1_AMOUNT: {or N/A}
+DOSE_1_EXERCISE: {yes/no/N/A}
+DOSE_1_GAP_MIN: {number or N/A}
+DOSE_1_GAP_OK: {yes/no/N/A}
+DOSE_1_ROUNDS: {number or N/A}
+DOSE_1_HR_TARGET_FELT: {yes/no/N/A}
+DOSE_1_ABSORPTION: {1-5 or N/A}
+DOSE_2_TAKEN: {yes/no}
+DOSE_2_TIME: {or N/A}
+DOSE_2_AMOUNT: {or N/A}
+DOSE_2_EXERCISE: {yes/no/N/A}
+DOSE_2_GAP_MIN: {number or N/A}
+DOSE_2_GAP_OK: {yes/no/N/A}
+DOSE_2_ROUNDS: {number or N/A}
+DOSE_2_HR_TARGET_FELT: {yes/no/N/A}
+DOSE_2_ABSORPTION: {1-5 or N/A}
+PSA: {value or none}
+TESTOSTERONE: {value or none}
+OTHER_MARKERS: {description or none}
+MEALS: {summary}
+WATER_OZ: {number or N/A}
+SLEEP_HRS: {number or N/A}
+SLEEP_QUALITY: {1-5 or N/A}
+MOOD: {1-10 or N/A}
+ENERGY: {1-10 or N/A}
+PHYSICAL: {1-10 or N/A}
+SYMPTOMS: {description or none}
+APPOINTMENT: {description or none}
+NOTES: {anything notable}
+[/SUMMARY]
+
+After summary, add a warm closing. Include patterns in [INSIGHT]...[/INSIGHT] if relevant.` : ''}
+
+TONE: Warm, brief, natural. Match his energy. Never robotic. If he mentions the exercise felt effective, engage with that — it's the most clinically interesting signal.`;
+}
+
+// ═══════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  updateHeader();
+  setupMic();
+  document.getElementById('msg-input').addEventListener('input', () => {
+    document.getElementById('send-btn').disabled =
+      document.getElementById('msg-input').value.trim() === '';
+  });
+
+  await checkServerHealth();
+  await loadServerState();
+  await loadEntries();
+
+  updateStreak();
+  updateCoverage();
+
+  if (state.finalized) {
+    showFinalizedState();
+  } else {
+    restoreMessages();
+    startVisit();
+  }
+});
+
+function updateHeader() {
+  const now = new Date();
+  const opts = { weekday: 'short', month: 'short', day: 'numeric' };
+  document.querySelectorAll('#date-display').forEach(el =>
+    el.textContent = now.toLocaleDateString('en-US', opts));
+  const hour = now.getHours();
+  const word = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const g = document.getElementById('greeting');
+  if (g) g.textContent = `${word}, ${PROTOCOL.name}.`;
+}
+
+function updateStreak() {
+  const dotsEl = document.getElementById('streak-dots');
+  const lblEl  = document.getElementById('streak-label');
+  if (!dotsEl) return;
+  let streak = state.finalized ? 1 : 0;
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  while (true) {
+    const key = d.toISOString().split('T')[0];
+    if (entries.find(e => e.date === key)) { streak++; d.setDate(d.getDate() - 1); }
+    else break;
+  }
+  dotsEl.innerHTML = '';
+  for (let i = 0; i < 7; i++) {
+    const dot = document.createElement('div');
+    dot.className = 'streak-dot' + (i < Math.min(streak, 7) ? ' active' : '');
+    dotsEl.appendChild(dot);
+  }
+  lblEl.textContent = streak > 0 ? `${streak} day streak` : 'Start your streak today';
+}
+
+function updateCoverage() {
+  const row = document.getElementById('coverage-row');
+  if (!row) return;
+  row.innerHTML = '';
+  Object.entries(FIELD_GROUPS).forEach(([label, keys]) => {
+    const logged = keys.some(k =>
+      state.fields[k] && state.fields[k] !== 'N/A' && state.fields[k] !== 'none');
+    const pill = document.createElement('span');
+    pill.className = 'coverage-pill' + (logged ? ' logged' : '');
+    pill.textContent = label;
+    row.appendChild(pill);
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  VISITS
+// ═══════════════════════════════════════════════════
+function restoreMessages() {
+  const area = document.getElementById('chat-area');
+  area.innerHTML = '';
+  let lastVisit = -1;
+  state.messages.forEach((msg, idx) => {
+    const v = getVisitForIdx(idx);
+    if (v !== lastVisit && v > 0 && state.visits[v]) {
+      const div = document.createElement('div');
+      div.className = 'visit-divider';
+      div.textContent = state.visits[v].time;
+      area.appendChild(div);
+      lastVisit = v;
+    }
+    if (msg.display) addBubble(msg.role, msg.display, false);
+  });
+  scrollChat();
+}
+
+function getVisitForIdx(idx) {
+  let cum = 0;
+  for (let v = 0; v < state.visits.length; v++) {
+    cum += state.visits[v].messageCount;
+    if (idx < cum) return v;
+  }
+  return state.visits.length;
+}
+
+async function startVisit() {
+  const visitNum  = state.visits.length;
+  const timeStr   = new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+  if (visitNum > 0) {
+    const div = document.createElement('div');
+    div.className = 'visit-divider';
+    div.textContent = timeStr;
+    document.getElementById('chat-area').appendChild(div);
+  }
+
+  const fieldContext = Object.keys(state.fields).length
+    ? `\n\nFields logged so far:\n${JSON.stringify(state.fields, null, 2)}`
+    : '';
+
+  const initMsg = {
+    role: 'user',
+    content: `[VISIT ${visitNum + 1} — ${timeStr}${fieldContext}]\nPlease greet me for this visit and invite me to share what's on my mind.`,
+    display: null,
+  };
+
+  const msgs = [...state.messages, initMsg];
+  await callClaude(msgs, true);
+
+  state.visits.push({ time: timeStr, messageCount: 0 });
+  await saveServerState();
+}
+
+function showFinalizedState() {
+  addBubble('assistant',
+    `Today's entry is already saved, ${PROTOCOL.name}. Review it in History. See you tomorrow.`, false);
+  document.getElementById('msg-input').disabled = true;
+  document.getElementById('send-btn').disabled = true;
+}
+
+// ═══════════════════════════════════════════════════
+//  MESSAGING
+// ═══════════════════════════════════════════════════
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+async function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const text  = input.value.trim();
+  if (!text || isLoading) return;
+  input.value = ''; input.style.height = 'auto';
+  document.getElementById('send-btn').disabled = true;
+
+  addBubble('user', text);
+  const msg = { role: 'user', content: text, display: text };
+  state.messages.push(msg);
+  if (state.visits.length) state.visits[state.visits.length - 1].messageCount++;
+
+  await callClaude([...state.messages]);
+  await saveServerState();
+}
+
+async function callClaude(msgs, isInit = false) {
+  if (isLoading) return;
+  isLoading = true;
+  const typingEl = addTyping();
+
+  const apiMsgs = msgs.map(m => ({ role: m.role, content: m.content }));
+
+  try {
+    const data = await api('POST', '/api/claude', {
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: buildSystemPrompt(),
+      messages: apiMsgs,
+    });
+
+    removeTyping(typingEl);
+
+    if (data.error) {
+      addBubble('assistant', `⚠ ${data.error}`);
+    } else {
+      processReply(data.content[0].text, isInit);
+    }
+  } catch (err) {
+    removeTyping(typingEl);
+    addBubble('assistant', '⚠ Could not reach server. Check your connection and try again.');
+    console.error(err);
+  }
+
+  isLoading = false;
+}
+
+function processReply(reply, isInit) {
+  // Apply field updates
+  const fm = reply.match(/\[FIELDS\]([\s\S]*?)\[\/FIELDS\]/);
+  if (fm) {
+    fm[1].trim().split('\n').forEach(line => {
+      const i = line.indexOf(':');
+      if (i > -1) {
+        const k = line.slice(0, i).trim();
+        const v = line.slice(i + 1).trim();
+        if (v && v !== 'N/A' && v !== 'unknown') state.fields[k] = v;
+      }
+    });
+    updateCoverage();
+  }
+
+  // Summary
+  const sm = reply.match(/\[SUMMARY\]([\s\S]*?)\[\/SUMMARY\]/);
+  if (sm) {
+    sm[1].trim().split('\n').forEach(line => {
+      const i = line.indexOf(':');
+      if (i > -1) state.fields[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    });
+    showSummaryCard(state.fields);
+  }
+
+  // Insight
+  const im = reply.match(/\[INSIGHT\]([\s\S]*?)\[\/INSIGHT\]/);
+
+  // Display text
+  const display = reply
+    .replace(/\[FIELDS\][\s\S]*?\[\/FIELDS\]/g, '')
+    .replace(/\[SUMMARY\][\s\S]*?\[\/SUMMARY\]/g, '')
+    .replace(/\[INSIGHT\][\s\S]*?\[\/INSIGHT\]/g, '')
+    .replace(/\[VISIT[\s\S]*?\]/g, '')
+    .trim();
+
+  if (display) {
+    addBubble('assistant', display);
+    state.messages.push({ role: 'assistant', content: reply, display });
+    if (state.visits.length) state.visits[state.visits.length - 1].messageCount++;
+  }
+
+  if (im && im[1].trim()) addInsightBubble(im[1].trim());
+  saveServerState();
+}
+
+// ═══════════════════════════════════════════════════
+//  SUMMARY & FINALIZE
+// ═══════════════════════════════════════════════════
+function showSummaryCard(s) {
+  const card  = document.getElementById('summary-card');
+  const lines = document.getElementById('summary-lines');
+  const d1 = s.DOSE_1_TAKEN === 'yes', d2 = s.DOSE_2_TAKEN === 'yes';
+  const e1 = s.DOSE_1_EXERCISE === 'yes', e2 = s.DOSE_2_EXERCISE === 'yes';
+  lines.innerHTML = `
+    <div><strong>Dose 1:</strong> ${d1 ? `Taken ${s.DOSE_1_TIME||''}` : 'Not taken'}${d1&&e1?` · Exercise: ${s.DOSE_1_ROUNDS||'?'} rounds, ${s.DOSE_1_GAP_MIN||'?'}min gap`:d1?' · No exercise':''}</div>
+    <div><strong>Dose 2:</strong> ${d2 ? `Taken ${s.DOSE_2_TIME||''}` : 'Not taken'}${d2&&e2?` · Exercise: ${s.DOSE_2_ROUNDS||'?'} rounds, ${s.DOSE_2_GAP_MIN||'?'}min gap`:d2?' · No exercise':''}</div>
+    ${s.SLEEP_HRS&&s.SLEEP_HRS!=='N/A'?`<div><strong>Sleep:</strong> ${s.SLEEP_HRS}h · Quality ${s.SLEEP_QUALITY}/5</div>`:''}
+    ${s.MOOD&&s.MOOD!=='N/A'?`<div><strong>Mood:</strong> ${s.MOOD}/10 · Energy: ${s.ENERGY}/10 · Physical: ${s.PHYSICAL}/10</div>`:''}
+    ${s.PSA&&s.PSA!=='none'&&s.PSA!=='N/A'?`<div><strong>PSA:</strong> ${s.PSA}</div>`:''}
+    ${s.SYMPTOMS&&s.SYMPTOMS!=='none'&&s.SYMPTOMS!=='N/A'?`<div><strong>Symptoms:</strong> ${s.SYMPTOMS}</div>`:''}
+    ${s.MEALS?`<div><strong>Meals:</strong> ${s.MEALS.slice(0,80)}${s.MEALS.length>80?'…':''}</div>`:''}`;
+  card.style.display = 'block';
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+}
+
+async function finalizeEntry() {
+  try {
+    await api('POST', `/api/entries/${PARTICIPANT}`, {
+      date:     todayKey(),
+      fields:   state.fields,
+      messages: state.messages,
+      visits:   state.visits.length,
+    });
+    state.finalized = true;
+    await saveServerState();
+    await loadEntries();
+    updateStreak();
+    document.getElementById('summary-card').style.display = 'none';
+    addBubble('assistant',
+      `Saved to the server. That's a wrap for today, ${PROTOCOL.name}.${state.visits.length > 1 ? ` You checked in ${state.visits.length} times — good discipline.` : ''} See you tomorrow.`);
+    document.getElementById('msg-input').disabled = true;
+    document.getElementById('send-btn').disabled = true;
+  } catch (e) {
+    addBubble('assistant', '⚠ Could not save to server. Try again in a moment.');
+    console.error(e);
+  }
+}
+
+function keepAdding() {
+  document.getElementById('summary-card').style.display = 'none';
+  addBubble('assistant', 'Of course — what else would you like to add?');
+}
+
+// ═══════════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════════
+function addBubble(role, text, animate = true) {
+  const area = document.getElementById('chat-area');
+  const wrap = document.createElement('div');
+  wrap.className = `bubble-wrap ${role}`;
+  if (!animate) wrap.style.animation = 'none';
+  const bub = document.createElement('div');
+  bub.className = 'bubble';
+  bub.textContent = text;
+  wrap.appendChild(bub);
+  area.appendChild(wrap);
+  scrollChat();
+  return wrap;
+}
+
+function addInsightBubble(text) {
+  const area = document.getElementById('chat-area');
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap assistant';
+  wrap.innerHTML = `<div class="bubble insight"><div class="insight-label">Pattern observed</div>${text}</div>`;
+  area.appendChild(wrap);
+  scrollChat();
+}
+
+function addTyping() {
+  const area = document.getElementById('chat-area');
+  const wrap = document.createElement('div');
+  wrap.className = 'bubble-wrap assistant';
+  wrap.id = 'typing-indicator';
+  wrap.innerHTML = `<div class="typing-dots"><span></span><span></span><span></span></div>`;
+  area.appendChild(wrap);
+  scrollChat();
+  return wrap;
+}
+
+function removeTyping(el) { if (el?.parentNode) el.parentNode.removeChild(el); }
+function scrollChat() {
+  const a = document.getElementById('chat-area');
+  setTimeout(() => a.scrollTop = a.scrollHeight, 60);
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+  document.getElementById('send-btn').disabled = el.value.trim() === '';
+}
+
+// ═══════════════════════════════════════════════════
+//  VOICE
+// ═══════════════════════════════════════════════════
+function setupMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { document.getElementById('mic-btn').style.display = 'none'; return; }
+  recognition = new SR();
+  recognition.continuous = false; recognition.interimResults = false; recognition.lang = 'en-US';
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript;
+    const inp = document.getElementById('msg-input');
+    inp.value = (inp.value + ' ' + t).trim();
+    autoResize(inp); stopMic();
+  };
+  recognition.onend = stopMic; recognition.onerror = stopMic;
+}
+function toggleMic() { isRecording ? stopMic() : startMic(); }
+function startMic() {
+  if (!recognition) return;
+  recognition.start(); isRecording = true;
+  document.getElementById('mic-btn').classList.add('recording');
+}
+function stopMic() {
+  if (recognition) recognition.stop(); isRecording = false;
+  document.getElementById('mic-btn').classList.remove('recording');
+}
+
+// ═══════════════════════════════════════════════════
+//  TABS & HISTORY
+// ═══════════════════════════════════════════════════
+function switchTab(tab) {
+  document.getElementById('journal-screen').style.display = tab === 'journal' ? 'flex' : 'none';
+  document.getElementById('history-screen').style.display = tab === 'history' ? 'flex' : 'none';
+  document.getElementById('tab-journal').classList.toggle('active', tab === 'journal');
+  document.getElementById('tab-history').classList.toggle('active', tab === 'history');
+  if (tab === 'history') renderHistory();
+}
+
+function renderHistory() {
+  const view = document.getElementById('history-view');
+  if (!entries.length) {
+    view.innerHTML = `<div id="empty-history">
+      <svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="1">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+      </svg>
+      <div>No finalized entries yet.<br>Complete your first full day to start your record.</div>
+    </div>`;
+    return;
+  }
+  view.innerHTML = '';
+  entries.forEach(entry => {
+    const s = entry.fields || {};
+    const dateStr = new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US',
+      { weekday: 'long', month: 'short', day: 'numeric' });
+    const badges = [
+      s.DOSE_1_TAKEN === 'yes' ? '<span class="badge good">Dose 1</span>' : '<span class="badge missed">Missed D1</span>',
+      s.DOSE_2_TAKEN === 'yes' ? '<span class="badge good">Dose 2</span>' : '<span class="badge missed">Missed D2</span>',
+      (s.DOSE_1_EXERCISE === 'yes' || s.DOSE_2_EXERCISE === 'yes') ? '<span class="badge good">Exercise</span>' : '<span class="badge">No exercise</span>',
+      s.PSA && s.PSA !== 'none' && s.PSA !== 'N/A' ? `<span class="badge good">PSA: ${s.PSA}</span>` : '',
+      entry.visits > 1 ? `<span class="badge partial">${entry.visits} check-ins</span>` : '',
+    ].join('');
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="history-date">${dateStr}</div>
+      <div class="history-preview">
+        ${s.MOOD?`Mood ${s.MOOD}/10 · `:''}${s.ENERGY?`Energy ${s.ENERGY}/10 · `:''}${s.SLEEP_HRS?`Sleep ${s.SLEEP_HRS}h`:''}
+        ${s.NOTES&&s.NOTES!=='N/A'&&s.NOTES!=='none'?'<br>'+s.NOTES.slice(0,80):''}
+      </div>
+      <div class="history-badges">${badges}</div>`;
+    item.onclick = () => showDetail(entry);
+    view.appendChild(item);
+  });
+}
+
+function showDetail(entry) {
+  const s = entry.fields || {};
+  const dateStr = new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US',
+    { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const rows = Object.entries(s).map(([k, v]) =>
+    `<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid var(--green-mid)">
+      <span style="color:var(--text-hint);font-size:12px;min-width:150px;text-transform:uppercase;letter-spacing:0.04em">${k.replace(/_/g,' ')}</span>
+      <span style="color:var(--cream);font-size:13px">${v}</span>
+    </div>`).join('');
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:var(--green-deep);z-index:100;overflow-y:auto;padding:52px 20px 40px;';
+  modal.innerHTML = `
+    <button onclick="this.parentNode.remove()" style="position:fixed;top:16px;right:20px;background:var(--green-mid);border:none;color:var(--cream);padding:6px 14px;border-radius:20px;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer">Close</button>
+    <div style="font-family:'DM Serif Display',serif;font-size:20px;color:var(--cream);margin-bottom:4px">${dateStr}</div>
+    <div style="font-size:12px;color:var(--text-hint);margin-bottom:16px">${entry.visits||1} check-in(s)</div>
+    ${rows}`;
+  document.body.appendChild(modal);
+}
+</script>
+</body>
+</html>
